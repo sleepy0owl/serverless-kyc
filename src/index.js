@@ -1,4 +1,5 @@
 const aws = require('aws-sdk');
+aws.config.update({region:"us-east-1"});
 
 function send_to_rekognition(operation, source_image, target_image) {
     
@@ -29,6 +30,6 @@ module.exports.handler = async (event, context) => {
         console.log(typeof s3_object_doc.Body);
         console.log(typeof s3_object_photo.Body);
     } catch (error) {
-        console.log(error);
+        console.error(error);
     }
 }
