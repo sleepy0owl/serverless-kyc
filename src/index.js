@@ -1,8 +1,37 @@
 const aws = require('aws-sdk');
 aws.config.update({region:"us-east-1"});
 
-function send_to_rekognition(operation, source_image, target_image) {
-    
+async function face_compare(doc_bucket, photo_bucket, source_image, target_image) {
+    const client = new aws.Rekognition();
+    let result = {};
+    const params = {
+        SourceImage: {
+            S3Object: {
+                Bucket: doc_bucket,
+                Name: source_image
+            }
+        },
+        TargetImage: {
+            S3Object: {
+                Bucket: photo_bucket,
+                Name: target_image
+            }
+        },
+        SimilarityThreshold: 80
+    }
+    try {
+        const result = await client.compareFaces(params).promise();
+        console.log(result);
+        result = {
+            success: true
+        }
+    } catch (error) {
+        console.error(error);
+        result = {
+            success: false
+        }
+    }
+    return result;
 }
 
 function save_result_dynamodb(params) {
@@ -16,20 +45,8 @@ module.exports.handler = async (event, context) => {
     console.log('FILE NAME : ', key);
     let fields = key.split('-');
     const user_uuid = fields[0];
-    const param1 = {
-        Bucket: bucket_name,
-        Key: key,
-    };
-    const param2 = {
-        Bucket: process.env.PHOTO_BUCKET,
-        Key: `${user_uuid}-photo.jpg`
-    }
-    try {
-        const s3_object_doc = await s3.getObject(param1).promise();
-        const s3_object_photo = await s3.getObject(param2).promise();
-        console.log(typeof s3_object_doc.Body);
-        console.log(typeof s3_object_photo.Body);
-    } catch (error) {
-        console.error(error);
-    }
+    let target_image = `${user_uuid}-photo.jpg`;
+    let photo_bucket = process.env.PHOTO_BUCKET
+    let result = await face_compare(bucket_name, photo_bucket, key, target_image);
+    console.log('result : ', result);
 }
